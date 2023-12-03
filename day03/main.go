@@ -18,6 +18,7 @@ func main() {
 	defer file.Close()
 
 	var symbols []Coordinates
+	var possibleGears []Coordinates
 	var partNumbers []PartNumber
 	y := 0
 	reNumber := regexp.MustCompile(`(\d+)`)
@@ -29,7 +30,11 @@ func main() {
 		line := scanner.Text()
 
 		for _, symbolMatch := range reSymbol.FindAllStringIndex(line, -1) {
-			symbols = append(symbols, Coordinates{x: symbolMatch[0], y: y})
+			coordinates := Coordinates{x: symbolMatch[0], y: y}
+			symbols = append(symbols, coordinates)
+			if line[symbolMatch[0]:symbolMatch[1]] == "*" {
+				possibleGears = append(possibleGears, coordinates)
+			}
 		}
 
 		for _, numberMatch := range reNumber.FindAllStringIndex(line, -1) {
@@ -57,7 +62,28 @@ partsLoop:
 		}
 	}
 
+	part2 := 0
+possibleGearsLoop:
+	for _, possibleGear := range possibleGears {
+		var adjacentNumbers []PartNumber
+
+		for _, partNumber := range partNumbers {
+			if partNumber.isAdjacent(possibleGear) {
+				adjacentNumbers = append(adjacentNumbers, partNumber)
+			}
+
+			if len(adjacentNumbers) > 2 {
+				continue possibleGearsLoop
+			}
+		}
+
+		if len(adjacentNumbers) == 2 {
+			part2 += adjacentNumbers[0].value * adjacentNumbers[1].value
+		}
+	}
+
 	fmt.Println("Part 1", part1)
+	fmt.Println("Part 2", part2)
 }
 
 type PartNumber struct {
