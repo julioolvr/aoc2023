@@ -22,6 +22,10 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 	part1 := 0.0
+	part2 := 0
+
+	currentCardIndex := 0
+	var cardCounts = [1000]int{}
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -36,7 +40,16 @@ func main() {
 		if matchingNumbers > 0 {
 			part1 += math.Pow(2, float64(matchingNumbers)-1)
 		}
+
+		currentCardCount := cardCounts[currentCardIndex] + 1
+		part2 += currentCardCount
+		for i := currentCardIndex + 1; i <= currentCardIndex+matchingNumbers; i++ {
+			cardCounts[i] += currentCardCount
+		}
+
+		currentCardIndex++
 	}
 
 	fmt.Println("Part 1", part1)
+	fmt.Println("Part 2", part2)
 }
