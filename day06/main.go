@@ -54,6 +54,12 @@ func main() {
 	}
 
 	fmt.Println("Part 1", part1)
+
+	// Too lazy to parse again
+	part2Race := Race{length: 53717880, record: 275118112151524}
+	minButtonPress, maxButtonPress := buttonPressLengths(part2Race.length, part2Race.record)
+	part2 := maxButtonPress - minButtonPress + 1
+	fmt.Println("Part 2", part2)
 }
 
 type Race struct {
