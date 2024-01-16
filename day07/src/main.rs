@@ -22,6 +22,16 @@ fn main() -> anyhow::Result<()> {
         .sum();
     println!("Part 1: {}", part_1);
 
+    let mut joker_hands = hands.into_iter().map(JokerHand).collect::<Vec<_>>();
+    joker_hands.sort();
+
+    let part_2: usize = joker_hands
+        .iter()
+        .enumerate()
+        .map(|(i, hand)| (i + 1) * hand.0.bid)
+        .sum();
+    println!("Part 2: {}", part_2);
+
     Ok(())
 }
 
@@ -63,6 +73,64 @@ impl Hand {
         }
 
         HandType::HighCard
+    }
+
+    fn get_joker_hand_type(&self) -> HandType {
+        let non_joker_hand_type = self.get_hand_type();
+        let joker_hand_type: HandType;
+
+        let mut counts = self.cards.iter().fold(HashMap::new(), |mut acc, card| {
+            *acc.entry(card).or_insert(0) += 1;
+            acc
+        });
+
+        let joker_counts = counts.remove(&CardLabel::Jack).unwrap_or(0);
+
+        if joker_counts == 0 {
+            return non_joker_hand_type;
+        }
+
+        if joker_counts == 5 {
+            return HandType::FiveOfAKind;
+        }
+
+        if counts.values().max().unwrap_or(&0) + joker_counts == 5 {
+            // If the max non-Joker count + the Joker count is 5, then we have a Five of a Kind
+            joker_hand_type = HandType::FiveOfAKind;
+        } else if counts.values().max().unwrap_or(&0) + joker_counts == 4 {
+            // If the max non-Joker count + the Joker count is 4, then we have a Four of a Kind
+            joker_hand_type = HandType::FourOfAKind;
+        } else if counts.values().max().unwrap_or(&0) + joker_counts == 3 {
+            // If there are 3 jokers or more, we'd have either 4 of a kind or 5 of a kind.
+            // So here we have either one or two jokers (the 0 jokers scenario is an early return
+            // above).
+            if joker_counts == 2 {
+                // * If there's two jokers, then the remaining cards must be all different because
+                //   otherwise we'd have either four or five of a kind. That means we have
+                //   ThreeOfAKind (any of those cards, with the two jokers).
+                joker_hand_type = HandType::ThreeOfAKind;
+            } else {
+                // * If there's one joker, then there must be at least one pair of cards that are
+                //   equal to get the total of 3 from this conditional branch. If the remaining two
+                //   cards are a pair, we get a FullHouse. Otherwise we have ThreeOfAKind.
+                if counts.values().all(|&count| count == 2) {
+                    joker_hand_type = HandType::FullHouse;
+                } else {
+                    joker_hand_type = HandType::ThreeOfAKind;
+                }
+            }
+        } else {
+            // The only remaining scenario is that the max count + the number of jokers is 2. There
+            // is at least one joker, so all the remaining cards are different. This yields a
+            // OnePair by combining the joker with any card
+            joker_hand_type = HandType::OnePair;
+        }
+
+        return if joker_hand_type > non_joker_hand_type {
+            joker_hand_type
+        } else {
+            non_joker_hand_type
+        };
     }
 }
 
@@ -123,6 +191,46 @@ impl PartialOrd for Hand {
 }
 
 impl Ord for Hand {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+#[derive(PartialEq, Eq)]
+struct JokerHand(Hand);
+
+impl PartialOrd for JokerHand {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering::*;
+
+        let self_hand_type = self.0.get_joker_hand_type();
+        let other_hand_type = other.0.get_joker_hand_type();
+
+        if self_hand_type > other_hand_type {
+            return Some(Greater);
+        } else if self_hand_type < other_hand_type {
+            return Some(Less);
+        } else {
+            return self
+                .0
+                .cards
+                .iter()
+                .zip(other.0.cards.iter())
+                .map(|(a, b)| match (a, b) {
+                    // Manually compare the Jack / Joker case so that it's smaller than anything
+                    // else without having to reimplement PartialOrd for CardLabel
+                    (CardLabel::Jack, CardLabel::Jack) => Equal,
+                    (CardLabel::Jack, _) => Less,
+                    (_, CardLabel::Jack) => Greater,
+                    _ => a.cmp(b),
+                })
+                .filter(|result| *result != Equal)
+                .next();
+        }
+    }
+}
+
+impl Ord for JokerHand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.partial_cmp(other).unwrap()
     }
