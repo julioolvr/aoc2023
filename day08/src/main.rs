@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use num_integer::Integer;
 use petgraph::graph::DiGraph;
 use petgraph::visit::{EdgeRef, IntoNodeIdentifiers};
 use petgraph::Direction::Outgoing;
@@ -21,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     lines.next();
 
     let mut graph = DiGraph::<String, Direction>::new();
-    let node_regex = Regex::new(r"([A-Z]{3}) = \(([A-Z]{3}), ([A-Z]{3})\)")?;
+    let node_regex = Regex::new(r"([A-Z0-9]{3}) = \(([A-Z0-9]{3}), ([A-Z0-9]{3})\)")?;
 
     for line in lines {
         let line = line.unwrap();
@@ -70,6 +71,39 @@ fn main() -> anyhow::Result<()> {
     }
 
     println!("Part 1: {}", steps);
+
+    let starting_points: Vec<_> = graph
+        .node_indices()
+        .filter(|index| graph[*index].ends_with("A"))
+        .collect();
+
+    let cycle_lengths: Vec<usize> = starting_points
+        .iter()
+        .map(|starting_point| {
+            let mut current = *starting_point;
+            let mut cycle_length = 0;
+
+            for direction in directions.iter().cycle() {
+                cycle_length += 1;
+
+                current = graph
+                    .edges_directed(current, Outgoing)
+                    .find(|edge| edge.weight() == direction)
+                    .unwrap()
+                    .target();
+
+                if graph[current].ends_with("Z") {
+                    break;
+                }
+            }
+
+            return cycle_length;
+        })
+        .collect();
+
+    let steps = cycle_lengths.iter().fold(1, |a, b| a.lcm(b));
+
+    println!("Part 2: {}", steps);
     Ok(())
 }
 
