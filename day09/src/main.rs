@@ -13,25 +13,33 @@ fn main() {
         })
         .collect();
 
-    let part_1: isize = readings
+    let (part_2, part_1) = readings
         .iter()
-        .map(|reading| predict_next_reading(reading))
-        .sum();
+        .map(|reading| predict_previous_and_next_reading(reading))
+        .reduce(|acc, (previous, next)| (acc.0 + previous, acc.1 + next))
+        .unwrap();
+
     println!("Part 1: {}", part_1);
+    println!("Part 2: {}", part_2);
 }
 
-fn predict_next_reading(previous_readings: &Vec<isize>) -> isize {
+fn predict_previous_and_next_reading(previous_readings: &Vec<isize>) -> (isize, isize) {
     if previous_readings.iter().all(|reading| *reading == 0) {
-        return 0;
+        return (0, 0);
     }
 
-    return *previous_readings.last().unwrap()
-        + predict_next_reading(
+    let (next_sequence_previous_reading, next_sequence_next_reading) =
+        predict_previous_and_next_reading(
             &previous_readings
                 .windows(2)
                 .map(|window| window[1] - window[0])
                 .collect(),
         );
+
+    return (
+        previous_readings.first().unwrap() - next_sequence_previous_reading,
+        next_sequence_next_reading + previous_readings.last().unwrap(),
+    );
 }
 
 fn read_lines() -> io::Result<io::Lines<io::BufReader<File>>> {
